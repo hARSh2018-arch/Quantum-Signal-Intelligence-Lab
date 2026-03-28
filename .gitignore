@@ -1,0 +1,12 @@
+﻿# Node / Next
+frontend/node_modules
+frontend/.next
+
+# Python
+api/.venv
+__pycache__/
+*.pyc
+
+# Local
+*.log
+

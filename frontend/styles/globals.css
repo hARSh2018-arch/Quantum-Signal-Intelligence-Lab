@@ -1,0 +1,49 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#__next {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Inter", sans-serif;
+  background: #040814;
+  color: #eef4ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.glass-panel {
+  background: rgba(10, 18, 34, 0.68);
+  border: 1px solid rgba(160, 190, 255, 0.12);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.24);
+}
+
+.grid-overlay {
+  background-image:
+    linear-gradient(rgba(115, 165, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(115, 165, 255, 0.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.story-step-active {
+  border-color: rgba(124, 247, 212, 0.6);
+  background: rgba(124, 247, 212, 0.12);
+}
+
+.plot-shell .js-plotly-plot,
+.plot-shell .plot-container {
+  width: 100%;
+}
+
