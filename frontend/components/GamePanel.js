@@ -1,6 +1,6 @@
-﻿export default function GamePanel({ score, mse, targetType, liveHint, gameMode }) {
+export default function GamePanel({ score, mse, targetType, liveHint, gameMode }) {
   return (
-    <div className="glass-panel rounded-3xl p-5">
+    <div className="glass-panel self-start rounded-3xl p-5">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-warning/90">Recovery Game</p>
@@ -21,7 +21,7 @@
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Target Mode</div>
-          <div className="mt-3 text-2xl font-semibold text-white">{targetType}</div>
+          <div className="mt-3 break-words text-2xl font-semibold capitalize text-white">{targetType}</div>
         </div>
       </div>
       <div className="mt-4 rounded-2xl border border-accent/20 bg-accent/10 p-4 text-sm text-slate-200">
@@ -30,4 +30,3 @@
     </div>
   );
 }
-

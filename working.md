@@ -1,613 +1,234 @@
-# Quantum Signal Intelligence Lab
-
-## Full Working List and Step-by-Step Explanation
-
-## 1. Project Goal
-
-This project is an interactive full-stack lab that demonstrates how hidden signals can be recovered from noise using classical demodulation, while also drawing a visual and conceptual comparison to quantum measurement.
-
-The app is designed to feel like a polished engineering tool:
-
-- The frontend handles all real-time digital signal processing.
-- The backend handles quantum simulation using Qiskit.
-- The user can interact with controls, presets, story mode, plots, audio playback, and a quantum comparison panel.
-
-## 2. Main Project Structure
-
-Root folders:
-
-- `frontend/`
-- `api/`
-- `README.md`
-- `working.txt`
-- `working.md`
-
-Frontend files:
-
-- `frontend/pages/index.js`
-- `frontend/pages/_app.js`
-- `frontend/components/ControlPanel.js`
-- `frontend/components/SignalPlot.js`
-- `frontend/components/FFTPlot.js`
-- `frontend/components/IQVisualizer.js`
-- `frontend/components/GamePanel.js`
-- `frontend/components/QuantumPanel.js`
-- `frontend/components/AudioPlayer.js`
-- `frontend/lib/signalGenerator.js`
-- `frontend/lib/demodulation.js`
-- `frontend/lib/noise.js`
-- `frontend/lib/fft.js`
-- `frontend/lib/scoring.js`
-- `frontend/styles/globals.css`
-
-Backend files:
-
-- `api/main.py`
-- `api/app/__init__.py`
-- `api/app/main.py`
-- `api/app/quantum.py`
-- `api/requirements.txt`
-- `api/.venv/`
-
-## 3. What Each Part Does
-
-### 3.1 Frontend
-
-The frontend is built with Next.js and React.
-
-Its job is to:
-
-- generate synthetic signals
-- add controllable noise
-- demodulate the signal in real time
-- compute FFT values
-- score recovery quality
-- render dashboards and graphs
-- play signal audio
-- request quantum simulation data from the backend
-
-This means the frontend is responsible for almost all of the interactive experience.
-
-### 3.2 Backend
-
-The backend is built with FastAPI.
-
-Its job is to:
-
-- expose API endpoints for quantum simulation
-- run a simple Hadamard quantum circuit
-- return measurement counts as JSON
-- simulate noisy quantum measurement data
-
-This keeps the backend small and focused.
-
-## 4. Frontend Working Flow
-
-### 4.1 Main Page
-
-File:
-
-- `frontend/pages/index.js`
-
-This is the central UI controller.
-
-It:
-
-- loads the default preset
-- stores all slider/toggle state
-- generates the noisy signal
-- demodulates the signal
-- computes recovery score
-- computes FFT spectrum
-- updates story mode status
-- passes data into all visual components
-
-It is effectively the dashboard orchestrator.
-
-### 4.2 Presets
-
-File:
-
-- `frontend/lib/signalGenerator.js`
-
-There are 3 presets:
-
-- Radio Signal
-- Deep Space Signal
-- Quantum Experiment
-
-Each preset defines:
-
-- frequency
-- phase
-- SNR
-- sample rate
-- duration
-- message frequency
-- carrier frequency
-- amplitude
-- modulation index
-- description
-
-When the user clicks a preset button:
-
-- the control values are updated
-- the signal is regenerated immediately
-- the plots and score refresh automatically
-
-### 4.3 Signal Generation
-
-File:
-
-- `frontend/lib/signalGenerator.js`
-
-How it works:
-
-1. A time array is created from the sample rate and duration.
-2. A base message waveform is generated.
-3. A carrier waveform is generated.
-4. The message is modulated onto the carrier.
-5. Noise is added based on SNR.
-
-Outputs returned:
-
-- `t`
-- `message`
-- `carrier`
-- `quadratureCarrier`
-- `modulated`
-- `noisy`
-
-These outputs feed the rest of the dashboard.
-
-### 4.4 Noise System
-
-File:
-
-- `frontend/lib/noise.js`
-
-How it works:
-
-- Gaussian random noise is generated.
-- SNR in dB is converted into a noise amplitude.
-- That noise is added to each sample of the modulated signal.
-
-Purpose:
-
-- create a realistic noisy input
-- let the user see how recovery changes when signal quality drops
-
-### 4.5 Demodulation
-
-File:
-
-- `frontend/lib/demodulation.js`
-
-This is one of the core DSP pieces.
-
-The user chooses:
-
-- homodyne
-- heterodyne
-
-Homodyne flow:
-
-1. Multiply the signal by a synchronized local oscillator.
-2. Smooth the output using a moving average.
-3. Recover the low-frequency message envelope.
-
-Heterodyne flow:
-
-1. Multiply the signal into I and Q channels.
-2. Smooth both channels.
-3. Combine the magnitude of I and Q.
-4. Produce a more stable recovery for weak or shifted signals.
-
-Outputs:
-
-- `recovered`
-- `iComponent`
-- `qComponent`
-
-### 4.6 FFT Analysis
-
-File:
-
-- `frontend/lib/fft.js`
-
-How it works:
-
-1. The noisy signal is passed into a simple FFT routine.
-2. The spectrum is computed across half the frequency range.
-3. The frontend displays the result in the frequency panel.
-
-Purpose:
-
-- show where the carrier energy is
-- let judges visually connect time-domain and frequency-domain analysis
-
-### 4.7 Scoring System
-
-File:
-
-- `frontend/lib/scoring.js`
-
-How it works:
-
-1. The original message is normalized.
-2. The recovered signal is normalized.
-3. Point-by-point error is computed.
-4. Mean squared error is calculated.
-5. A similarity score out of 100 is produced.
-
-Outputs:
-
-- `similarity`
-- `error`
-- `mse`
-
-This powers the game mode and recovery feedback.
-
-## 5. UI Components and Their Roles
-
-### 5.1 Control Panel
-
-File:
-
-- `frontend/components/ControlPanel.js`
-
-Contains:
-
-- preset buttons
-- carrier frequency slider
-- phase slider
-- SNR slider
-- sample rate slider
-- demodulation toggle
-- classical/quantum mode toggle
-- game mode toggle
-- quantum overlay toggle
-
-Purpose:
-
-- give the user direct control over the experiment
-
-### 5.2 Signal Plot
-
-File:
-
-- `frontend/components/SignalPlot.js`
-
-Uses Plotly to render time-domain graphs.
-
-Used for:
-
-- noisy signal vs original message
-- recovered signal vs error
-- I vs Q storyline
-
-### 5.3 FFT Plot
-
-File:
-
-- `frontend/components/FFTPlot.js`
-
-Uses Plotly to render the frequency spectrum.
-
-Purpose:
-
-- visualize carrier and spectral content
-
-### 5.4 IQ Visualizer
-
-File:
-
-- `frontend/components/IQVisualizer.js`
-
-Uses Three.js.
-
-How it works:
-
-- I and Q values are converted into 3D point positions
-- a rotating constellation-like point cloud is displayed
-- this adds a more advanced lab-style visual effect
-
-Purpose:
-
-- provide a premium visual moment
-- help explain I/Q space beyond flat plots
-
-### 5.5 Game Panel
-
-File:
-
-- `frontend/components/GamePanel.js`
-
-Displays:
-
-- similarity score
-- residual error
-- target demodulation mode
-- live hint text
-
-Purpose:
-
-- make the recovery feel like a challenge
-- give immediate feedback as the user tunes controls
-
-### 5.6 Quantum Panel
-
-File:
-
-- `frontend/components/QuantumPanel.js`
-
-This component calls the backend API.
-
-It:
-
-- sends POST requests to `/quantum/simulate`
-- sends POST requests to `/quantum/noisy`
-- receives counts histograms
-- displays them as a bar chart
-- explains the conceptual mapping between classical and quantum ideas
-
-Conceptual links shown:
-
-- amplitude ↔ probability amplitude
-- noise ↔ uncertainty
-- demodulation lock ↔ basis alignment
-
-### 5.7 Audio Player
-
-File:
-
-- `frontend/components/AudioPlayer.js`
-
-Uses the Web Audio API.
-
-It lets the user:
-
-- play the noisy signal
-- play the recovered signal
-
-Purpose:
-
-- turn the abstract signal recovery into something judges can hear
-- make the demo more memorable
-
-## 6. Story Mode Working Flow
-
-Story steps:
-
-1. Signal is hidden in noise
-2. Apply demodulation
-3. Recover signal
-4. Compare with quantum measurement
-
-How it works:
-
-- the similarity score determines the active story step
-- low score means the signal is still buried
-- medium score means the user is partially locked
-- high score means the signal has been recovered
-- very high score unlocks the quantum comparison moment
-
-Purpose:
-
-- guide the user through the demo
-- make the app feel narrative instead of just technical
-
-## 7. Backend Working Flow
-
-### 7.1 API Entry
-
-Files:
-
-- `api/main.py`
-- `api/app/main.py`
-
-`api/main.py` exposes the app object.
-
-`api/app/main.py`:
-
-- creates the FastAPI app
-- enables CORS
-- mounts the quantum router at `/quantum`
-- provides a healthcheck route at `/`
-
-### 7.2 Quantum Logic
-
-File:
-
-- `api/app/quantum.py`
-
-This file defines:
-
-- request models
-- response model
-- simulation helpers
-- API route handlers
-
-### 7.3 `/quantum/simulate`
-
-Input:
-
-- `shots`
-
-Working steps:
-
-1. Build a 1-qubit quantum circuit.
-2. Start from `|0>`.
-3. Apply a Hadamard gate.
-4. Measure the qubit.
-5. Run the circuit with AerSimulator.
-6. Return counts like:
-   - `"0": count`
-   - `"1": count`
-
-Purpose:
-
-- show a balanced quantum measurement
-- create a visual analogue to classical amplitude distribution
-
-### 7.4 `/quantum/noisy`
-
-Input:
-
-- `shots`
-- `noise`
-
-Working steps:
-
-1. Run the same Hadamard circuit.
-2. Get the clean counts.
-3. Randomly flip some outcomes using the requested noise level.
-4. Return the modified histogram.
-
-Purpose:
-
-- simulate uncertainty and imperfect measurement
-- create a side-by-side comparison with noisy classical recovery
-
-### 7.5 Fallback Mode
-
-If Qiskit or Aer is unavailable:
-
-- the backend does not crash
-- fallback counts are generated
-- the UI can still demonstrate the concept
-
-Purpose:
-
-- keep the demo resilient
-
-## 8. Step-by-Step Data Flow
-
-Step 1:
-The page loads in the browser.
-
-Step 2:
-The default preset initializes control values.
-
-Step 3:
-The frontend generates a base message and carrier signal.
-
-Step 4:
-Noise is added to create the observed noisy waveform.
-
-Step 5:
-The frontend demodulates the noisy waveform using the selected method.
-
-Step 6:
-The recovered signal is compared against the original hidden message.
-
-Step 7:
-A similarity score and error trace are computed.
-
-Step 8:
-Plotly charts update:
-
-- time-domain signal
-- recovered output
+# Quantum Signal Intelligence Lab Working Notes
+
+This file is the current project working reference for the repository as it exists now.
+
+## Project Summary
+
+Quantum Signal Intelligence Lab is a browser-first signal analysis project with a small FastAPI quantum backend. The frontend is the main computation layer. It simulates a received signal, a local oscillator, demodulation behavior, FFT spectra, and IQ motion. The backend is used only for the quantum comparison panel.
+
+## Current Repository Shape
+
+```text
+api/
+  app/
+    __init__.py
+    main.py
+    quantum.py
+  main.py
+  requirements.txt
+frontend/
+  components/
+    AudioPlayer.js
+    ControlPanel.js
+    FFTPlot.js
+    GamePanel.js
+    IQVisualizer.js
+    QuantumPanel.js
+    SignalPlot.js
+  lib/
+    demodulation.js
+    fft.js
+    noise.js
+    scoring.js
+    signalGenerator.js
+  pages/
+    _app.js
+    index.js
+  styles/
+    globals.css
+README.md
+working.md
+```
+
+## Important Runtime Split
+
+### Website backend
+
+The live website backend is:
+
+`api/app/main.py`
+
+Run it with:
+
+```bash
+cd api
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+### Standalone Python demo
+
+`api/main.py` is no longer the FastAPI export file. It is now a standalone NumPy + Matplotlib simulation script with sliders.
+
+It currently demonstrates:
+
+- received signal
+- local oscillator
+- frequency distortion
+- floppy noise via random noise level
 - FFT spectrum
-- error graph
+- offset control
 
-Step 9:
-The Three.js IQ visualizer updates from I/Q data.
+Run it with:
 
-Step 10:
-The story panel updates based on recovery quality.
+```bash
+python api/main.py
+```
 
-Step 11:
-If the quantum panel is enabled, the frontend sends a request to the backend.
+## Frontend Responsibilities
 
-Step 12:
-FastAPI receives the request and calls Qiskit.
+The frontend performs the main signal workflow:
 
-Step 13:
-Qiskit runs the Hadamard circuit in AerSimulator.
+1. create the baseband message
+2. simulate the received RF path
+3. add noise and frequency behavior
+4. mix with a local oscillator
+5. recover homodyne or heterodyne output
+6. score recovery quality
+7. compute spectra
+8. render plots, audio, and IQ visualization
 
-Step 14:
-The backend returns JSON histogram data.
+## Current Website Features
 
-Step 15:
-The frontend renders the quantum histogram.
+- Homodyne and heterodyne analysis
+- Classical and quantum mode toggle
+- Received signal simulation
+- Local oscillator simulation
+- Frequency offset control
+- Adjustable LO offset
+- Noise level control through SNR
+- Received-vs-message plot
+- Local oscillator and mixed output plot
+- Recovered output plot
+- Frequency drift tracking plot
+- Received spectrum FFT
+- Local oscillator spectrum FFT
+- Audio probe
+- IQ constellation
+- Recovery scoring card
+- Signal status and oscillator sync cards
+- Quantum histogram comparison panel
 
-Step 16:
-The user can play noisy and recovered audio using the Web Audio API.
+## Main Frontend Files
 
-## 9. How to Run the Project
+### `frontend/pages/index.js`
 
-### 9.1 Run Backend
+Main orchestration file.
 
-Commands:
+Responsibilities:
 
-1. Open terminal
-2. Go to the backend folder:
-   `cd c:\Extra_s\Code\python\trial\api`
-3. Run FastAPI:
-   `.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload`
+- stores active controls and preset
+- runs signal generation
+- runs demodulation
+- computes scores and spectra
+- assembles the dashboard
 
-Backend URL:
+### `frontend/lib/signalGenerator.js`
 
-- `http://127.0.0.1:8000`
+Creates the simulated received path.
 
-### 9.2 Run Frontend
+Includes:
 
-Commands:
+- message generation
+- ideal transmitted carrier
+- received carrier instability
+- offset behavior
+- noise injection
 
-1. Open another terminal
-2. Go to frontend:
-   `cd c:\Extra_s\Code\python\trial\frontend`
-3. Start Next.js:
-   `npm run dev`
+### `frontend/lib/demodulation.js`
 
-Frontend URL:
+Handles:
 
-- `http://localhost:3000`
+- local oscillator generation
+- mixer I output
+- mixer Q output
+- moving-average smoothing
+- homodyne recovery
+- heterodyne recovery
 
-## 10. How to Demo It
+### `frontend/lib/fft.js`
 
-Suggested hackathon flow:
+Current spectrum implementation used by the UI FFT cards.
 
-1. Open the app and show the dark lab dashboard.
-2. Start with `Deep Space Signal`.
-3. Explain that the signal is hidden in heavy noise.
-4. Adjust carrier frequency and phase.
-5. Switch between homodyne and heterodyne.
-6. Show the recovery score improving.
-7. Point to the FFT and recovered waveform.
-8. Play the noisy sound.
-9. Play the recovered sound.
-10. Enable the quantum panel.
-11. Show the Hadamard histogram.
-12. Explain the mapping:
-    amplitude ↔ probability
-    noise ↔ uncertainty
-13. Finish by showing this is a live engineering-style tool, not a static slide.
+### `frontend/components/ControlPanel.js`
 
-## 11. What Makes It Impressive
+Current control deck includes:
 
-This project stands out because it combines:
+- received carrier
+- received phase
+- noise level
+- sampling rate
+- local oscillator frequency
+- local oscillator phase
+- local oscillator amplitude
+- LO offset slider behavior
+- demodulation mode
+- analysis mode
+- drift/distortion toggle
+- frequency offset toggle
+- comparison mode
+- game mode
+- standalone frequency offset card below the switch group
 
-- real-time frontend DSP
-- signal recovery gameplay
-- multiple synchronized visual panels
-- Web Audio playback
-- Three.js I/Q visualization
-- Qiskit-powered quantum comparison
-- a guided story mode for judges
+### `frontend/components/AudioPlayer.js`
 
-It is not just a simulation page.
-It is a structured interactive lab experience.
+Audio playback card for:
 
-## 12. Summary
+- noisy signal
+- recovered signal
 
-In short:
+Recovered playback currently removes DC before playback so it is easier to hear.
 
-- the frontend creates, corrupts, analyzes, and recovers signals live
-- the backend runs quantum measurement simulations
-- both sides are connected into one narrative interface
-- the user learns DSP and quantum concepts by interacting with the system directly
+### `frontend/components/IQVisualizer.js`
 
-This is how the full project works from end to end.
+Three.js constellation panel with:
+
+- live motion
+- signal-reactive pulsing
+- animated ring and halo
+
+### `frontend/components/QuantumPanel.js`
+
+Fetches:
+
+- `/quantum/simulate`
+- `/quantum/noisy`
+
+and renders the histogram comparison panel.
+
+## Backend Responsibilities
+
+### `api/app/main.py`
+
+Creates the FastAPI app, installs CORS middleware, mounts the quantum router, and exposes the root health route.
+
+### `api/app/quantum.py`
+
+Provides:
+
+- quantum request schemas
+- noisy quantum request schema
+- response schema
+- Qiskit-backed Hadamard simulation
+- fallback simulation when Qiskit Aer is unavailable
+
+## Current Design Notes
+
+- The classical DSP lane is frontend-driven.
+- The quantum lane is backend-driven.
+- Plotly is used for signal and spectrum charts.
+- Three.js is used for IQ visualization.
+- Web Audio API is used for audio playback.
+
+## Current Documentation Reality Check
+
+The project has changed from its earlier layout and wording. The key current truths are:
+
+- `api/main.py` is a standalone signal demo, not the live FastAPI entry file.
+- The website focuses on received signal, local oscillator, spectra, offset control, audio probe, and IQ visualization.
+- The control panel has been simplified compared with earlier broader impairment controls.
+- The heading and dashboard now frame the project around homodyne and heterodyne simulation analysis in classical and quantum mode.
+
+## Recommended Next Cleanup
+
+- Keep README and working notes aligned whenever control labels change.
+- If `api/main.py` is meant to stay as a separate demo, consider renaming it later to avoid confusion with the real API app.

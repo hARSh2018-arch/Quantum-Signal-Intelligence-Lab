@@ -1,4 +1,4 @@
-﻿import Head from "next/head";
+import Head from "next/head";
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import AudioPlayer from "../components/AudioPlayer";
@@ -14,11 +14,21 @@ import { PRESETS, generateSignalFrame } from "../lib/signalGenerator";
 import { scoreRecovery } from "../lib/scoring";
 
 const STORY_STEPS = [
-  "Signal is hidden in noise",
-  "Apply demodulation",
-  "Recover signal",
-  "Compare with quantum measurement",
+  "Transmit the clean message",
+  "Impair the RF path with drift, offset, and noise",
+  "Mix against a local oscillator",
+  "Observe the recovered baseband",
 ];
+
+function buildSpectrumTrace(name, spectrum, color, fillColor) {
+  return {
+    name,
+    frequencies: spectrum.frequencies,
+    magnitudes: spectrum.magnitudes,
+    color,
+    fillColor,
+  };
+}
 
 export default function Home() {
   const [presetKey, setPresetKey] = useState("radio");
@@ -45,7 +55,28 @@ export default function Home() {
         signal: signalFrame.noisy,
         time: signalFrame.t,
         carrierFrequency: controls.frequency,
+        frequencyOffset: controls.frequencyOffset,
         phase: controls.phase,
+        loFrequency: controls.loFrequency,
+        loPhase: controls.loPhase,
+        loAmplitude: controls.loAmplitude,
+        sampleRate: controls.sampleRate,
+        type: controls.demodulationType,
+      }),
+    [controls, signalFrame],
+  );
+
+  const idealDemodulated = useMemo(
+    () =>
+      demodulateSignal({
+        signal: signalFrame.idealReceived,
+        time: signalFrame.t,
+        carrierFrequency: controls.frequency,
+        frequencyOffset: 0,
+        phase: controls.phase,
+        loFrequency: controls.frequency,
+        loPhase: controls.phase,
+        loAmplitude: 1,
         sampleRate: controls.sampleRate,
         type: controls.demodulationType,
       }),
@@ -57,9 +88,19 @@ export default function Home() {
     [signalFrame, demodulated],
   );
 
-  const noisySpectrum = useMemo(
+  const idealScore = useMemo(
+    () => scoreRecovery(signalFrame.message, idealDemodulated.recovered),
+    [signalFrame, idealDemodulated],
+  );
+
+  const receivedSpectrum = useMemo(
     () => computeFFT(signalFrame.noisy, controls.sampleRate),
     [signalFrame, controls.sampleRate],
+  );
+
+  const localOscillatorSpectrum = useMemo(
+    () => computeFFT(demodulated.localOscillator, controls.sampleRate),
+    [demodulated, controls.sampleRate],
   );
 
   const activeStep = useMemo(() => {
@@ -71,12 +112,12 @@ export default function Home() {
 
   const liveHint = useMemo(() => {
     if (score.similarity < 45) {
-      return "The carrier lock is still drifting. Bring phase and carrier frequency closer to the preset to expose the buried envelope.";
+      return "The receiver is not coherently locked yet. Reduce offset or line up the local oscillator frequency and phase to expose the envelope.";
     }
     if (score.similarity < 75) {
-      return "You are partially synced. Try heterodyne mode when the signal is faint or phase-shifted to stabilize both I and Q components.";
+      return "Recovery is emerging, but the RF path is still unstable. Lower the drift randomness or switch to heterodyne mode to preserve I/Q information.";
     }
-    return "Recovery lock achieved. The classical envelope now mirrors the hidden message strongly enough to compare against the quantum readout.";
+    return "Carrier recovery is holding. Use comparison mode to contrast the ideal demodulator against the impaired path and study the residual distortion.";
   }, [score.similarity]);
 
   const applyPreset = (nextPresetKey) => {
@@ -99,20 +140,20 @@ export default function Home() {
       </Head>
       <main className="min-h-screen bg-radial-lab text-white">
         <div className="grid-overlay min-h-screen">
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <section className="mb-8 overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-6 glass-panel lg:p-8">
-              <div className="grid gap-8 lg:grid-cols-[1.4fr,0.8fr] lg:items-center">
+          <div className="mx-auto max-w-7xl px-3 py-5 sm:px-5 lg:px-6 lg:py-6">
+            <section className="mb-5 overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-5 glass-panel lg:mb-6 lg:p-6">
+              <div className="grid gap-6 lg:grid-cols-[1.4fr,0.8fr] lg:items-center">
                 <div>
                   <div className="mb-4 inline-flex rounded-full border border-accent/30 bg-accent/10 px-4 py-2 text-xs uppercase tracking-[0.35em] text-accent">
                     Quantum Signal Intelligence Lab
                   </div>
                   <h1 className="max-w-3xl text-4xl font-semibold leading-tight sm:text-5xl">
-                    Recover hidden transmissions and map classical demodulation to quantum measurement.
+                    Explore homodyne and heterodyne simulation analysis in classical and quantum mode.
                   </h1>
                   <p className="mt-4 max-w-2xl text-lg text-slate-300">
-                    A story-driven lab dashboard for decoding noisy carriers, comparing homodyne and heterodyne recovery, and visualizing how uncertainty echoes across a Hadamard quantum measurement.
+                    This live lab lets you compare homodyne and heterodyne demodulation across classical and quantum modes while tracking how the received signal, local oscillator, spectrum, and recovered output behave in real time.
                   </p>
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-6 grid gap-3 sm:grid-cols-4">
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                       <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Preset</div>
                       <div className="mt-2 text-lg font-semibold">{PRESETS[presetKey].label}</div>
@@ -124,6 +165,12 @@ export default function Home() {
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                       <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Recovery</div>
                       <div className="mt-2 text-lg font-semibold text-accent">{score.similarity}%</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div className="text-xs uppercase tracking-[0.25em] text-slate-400">LO Offset</div>
+                      <div className="mt-2 text-lg font-semibold text-electric">
+                        {(demodulated.oscillatorFrequency - controls.frequency).toFixed(1)} Hz
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -150,7 +197,7 @@ export default function Home() {
               </div>
             </section>
 
-            <section className="grid gap-6 xl:grid-cols-[0.9fr,1.1fr]">
+            <section className="grid gap-5 xl:grid-cols-[0.9fr,1.1fr] xl:items-stretch">
               <ControlPanel
                 controls={controls}
                 setControls={setControls}
@@ -158,7 +205,7 @@ export default function Home() {
                 applyPreset={applyPreset}
               />
 
-              <div className="grid gap-6">
+              <div className="grid min-w-0 content-start gap-5 self-stretch">
                 <GamePanel
                   score={score.similarity}
                   mse={score.mse}
@@ -166,47 +213,187 @@ export default function Home() {
                   liveHint={liveHint}
                   gameMode={controls.gameMode}
                 />
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid items-stretch gap-5 lg:grid-cols-2 lg:auto-rows-fr">
                   <AudioPlayer noisySignal={signalFrame.noisy} recoveredSignal={demodulated.recovered} />
                   <IQVisualizer iData={demodulated.iComponent} qData={demodulated.qComponent} />
+                </div>
+                <div className="grid items-stretch gap-5 lg:grid-cols-2">
+                  <div className="glass-panel flex h-full flex-col rounded-3xl p-4 lg:p-5">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.35em] text-warning/90">Signal Status</p>
+                        <h3 className="mt-2 text-lg font-semibold">Received path summary</h3>
+                      </div>
+                      <div className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
+                        Live
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
+                        <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Rx Frequency</div>
+                        <div className="mt-2 text-2xl font-semibold text-electric">{controls.frequency} Hz</div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
+                        <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Noise Level</div>
+                        <div className="mt-2 text-2xl font-semibold text-warning">{controls.snr} dB</div>
+                      </div>
+                    </div>
+                    <div className="mt-auto pt-4">
+                      <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-3 text-sm text-slate-300 lg:p-4">
+                      The received signal reflects the active noise, drift, and offset controls before demodulation.
+                      </div>
+                    </div>
+                  </div>
+                  <div className="glass-panel flex h-full flex-col rounded-3xl p-4 lg:p-5">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.35em] text-accent/80">Oscillator Sync</p>
+                        <h3 className="mt-2 text-lg font-semibold">Local oscillator status</h3>
+                      </div>
+                      <div className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
+                        Tracking
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
+                        <div className="text-xs uppercase tracking-[0.25em] text-slate-400">LO Frequency</div>
+                        <div className="mt-2 text-2xl font-semibold text-accent">{controls.loFrequency} Hz</div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
+                        <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Phase</div>
+                        <div className="mt-2 text-2xl font-semibold text-slate-200">{controls.loPhase} deg</div>
+                      </div>
+                    </div>
+                    <div className="mt-auto pt-4">
+                      <div className="rounded-2xl border border-electric/20 bg-electric/10 p-3 text-sm text-slate-200 lg:p-4">
+                        Current LO offset: {(demodulated.oscillatorFrequency - controls.frequency).toFixed(1)} Hz
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>
 
-            <section className="mt-6 grid gap-6 xl:grid-cols-2">
+            <section className="mt-5 grid gap-5 xl:grid-cols-2 lg:mt-6 lg:gap-6">
               <SignalPlot
-                title="Hidden Carrier vs Ground Truth"
+                title="Original Message vs Received RF"
                 time={signalFrame.t}
                 traces={[
-                  { name: "Noisy Modulated", values: signalFrame.noisy, color: "#73a5ff" },
-                  { name: "Original Message", values: signalFrame.message, color: "#7cf7d4" },
+                  { name: "Transmitted Message", values: signalFrame.message, color: "#f9c74f" },
+                  { name: "Received RF", values: signalFrame.noisy, color: "#73a5ff" },
+                  ...(controls.enableComparison
+                    ? [
+                        {
+                          name: "Ideal RF",
+                          values: signalFrame.idealReceived,
+                          color: "#f9c74f",
+                          dash: "dot",
+                        },
+                      ]
+                    : []),
                 ]}
               />
               <SignalPlot
-                title="Recovered Output and Residual Error"
+                title="Local Oscillator and Mixed Output"
+                time={signalFrame.t}
+                traces={[
+                  {
+                    name: "Local Oscillator",
+                    values: demodulated.localOscillator,
+                    color: "#f9c74f",
+                    dash: "dot",
+                    opacity: 0.7,
+                  },
+                  {
+                    name: "Mixer I Output",
+                    values: demodulated.mixedInPhase,
+                    color: "#ff6b8a",
+                    opacity: 0.95,
+                  },
+                  ...(controls.demodulationType === "heterodyne"
+                    ? [
+                        {
+                          name: "Mixer Q Output",
+                          values: demodulated.mixedQuadrature,
+                          color: "#a78bfa",
+                          opacity: 0.72,
+                        },
+                      ]
+                    : []),
+                ]}
+                layoutOverrides={{
+                  xaxis: {
+                    title: "Seconds",
+                    gridcolor: "rgba(148,163,184,0.14)",
+                    range: [0, Math.min(0.8, signalFrame.t[signalFrame.t.length - 1])],
+                  },
+                }}
+              />
+              <SignalPlot
+                title="Recovered Demodulated Output"
                 time={signalFrame.t}
                 traces={[
                   { name: "Recovered", values: demodulated.recovered, color: "#7cf7d4" },
-                  { name: "Error", values: score.error, color: "#ff6b8a" },
+                  { name: "Residual Error", values: score.error, color: "#ff6b8a" },
+                  ...(controls.enableComparison
+                    ? [
+                        {
+                          name: "Ideal Recovery",
+                          values: idealDemodulated.recovered,
+                          color: "#f9c74f",
+                          dash: "dot",
+                        },
+                      ]
+                    : []),
                 ]}
               />
-              <FFTPlot frequencies={noisySpectrum.frequencies} magnitudes={noisySpectrum.magnitudes} />
               <SignalPlot
-                title="Homodyne vs Heterodyne Storyline"
+                title="Frequency Drift Profile"
                 time={signalFrame.t}
                 traces={[
-                  { name: "I Component", values: demodulated.iComponent, color: "#f9c74f" },
-                  { name: "Q Component", values: demodulated.qComponent, color: "#a78bfa" },
+                  { name: "Instantaneous Carrier", values: signalFrame.instantaneousFrequency, color: "#73a5ff" },
+                  {
+                    name: "LO Frequency",
+                    values: signalFrame.t.map(() => demodulated.oscillatorFrequency),
+                    color: "#f9c74f",
+                    dash: "dash",
+                  },
+                ]}
+                tag="Frequency Tracking"
+              />
+            </section>
+
+            <section className="mt-5 grid gap-5 xl:grid-cols-2 lg:mt-6 lg:gap-6">
+              <FFTPlot
+                title="Received Signal Spectrum"
+                traces={[
+                  buildSpectrumTrace(
+                    "Received RF",
+                    receivedSpectrum,
+                    "#73a5ff",
+                    "rgba(115,165,255,0.18)",
+                  ),
+                ]}
+              />
+              <FFTPlot
+                title="Local Oscillator Spectrum"
+                traces={[
+                  buildSpectrumTrace(
+                    "Local Oscillator",
+                    localOscillatorSpectrum,
+                    "#f9c74f",
+                    "rgba(249,199,79,0.18)",
+                  ),
                 ]}
               />
             </section>
 
-            <section className="mt-6 grid gap-6 xl:grid-cols-2">
+            <section className="mt-5 grid gap-5 xl:grid-cols-2 lg:mt-6 lg:gap-6">
               <div className="glass-panel rounded-3xl p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-[0.35em] text-accent/80">Classical Lane</p>
-                    <h3 className="mt-2 text-xl font-semibold">DSP Signal Recovery</h3>
+                    <h3 className="mt-2 text-xl font-semibold">Imperfection Summary</h3>
                   </div>
                   <div className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
                     Frontend only
@@ -214,16 +401,24 @@ export default function Home() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Carrier Lock</div>
+                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Rx Carrier</div>
                     <div className="mt-2 text-3xl font-semibold text-electric">{controls.frequency} Hz</div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Phase Alignment</div>
-                    <div className="mt-2 text-3xl font-semibold text-accent">{controls.phase}°</div>
+                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">LO Frequency</div>
+                    <div className="mt-2 text-3xl font-semibold text-accent">{controls.loFrequency} Hz</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Measured SNR</div>
+                    <div className="mt-2 text-3xl font-semibold text-warning">{controls.snr} dB</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Ideal Recovery</div>
+                    <div className="mt-2 text-3xl font-semibold text-slate-200">{idealScore.similarity}%</div>
                   </div>
                 </div>
                 <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-300">
-                  Homodyne mixes against a synchronized local oscillator. Heterodyne preserves richer I/Q context for weak, drifting, or off-axis carriers.
+                  Homodyne emphasizes coherent carrier alignment. Heterodyne exposes both I and Q channels, making frequency offset and phase mismatch easier to study when the received oscillator is unstable.
                 </div>
               </div>
               <QuantumPanel
@@ -238,4 +433,3 @@ export default function Home() {
     </>
   );
 }
-

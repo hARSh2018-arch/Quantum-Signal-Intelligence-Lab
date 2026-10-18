@@ -17,6 +17,7 @@ body {
   font-family: "Segoe UI", "Inter", sans-serif;
   background: #040814;
   color: #eef4ff;
+  line-height: 1.5;
 }
 
 * {
@@ -45,5 +46,13 @@ body {
 .plot-shell .js-plotly-plot,
 .plot-shell .plot-container {
   width: 100%;
+}
+
+.plot-shell {
+  min-width: 0;
+}
+
+.plot-shell .svg-container {
+  width: 100% !important;
 }
 

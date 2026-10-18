@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
@@ -12,6 +12,7 @@ export default function QuantumPanel({ enabled, snr, demodulationType }) {
   useEffect(() => {
     if (!enabled) return undefined;
     let cancelled = false;
+    const timeoutId = window.setTimeout(runSimulation, 180);
 
     async function runSimulation() {
       try {
@@ -46,11 +47,11 @@ export default function QuantumPanel({ enabled, snr, demodulationType }) {
       }
     }
 
-    runSimulation();
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutId);
     };
-  }, [enabled, snr, demodulationType]);
+  }, [enabled, snr]);
 
   const probabilities = useMemo(() => {
     const total = Object.values(histogram).reduce((sum, value) => sum + value, 0) || 1;
@@ -62,13 +63,13 @@ export default function QuantumPanel({ enabled, snr, demodulationType }) {
 
   return (
     <div className="glass-panel rounded-3xl p-5">
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-accent/80">Quantum Twin</p>
           <h3 className="mt-2 text-xl font-semibold">Classical vs Quantum Readout</h3>
         </div>
         <div className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
-          Hadamard |0&gt; ? H ? Measure
+          Hadamard |0&gt; -&gt; H -&gt; Measure
         </div>
       </div>
 
@@ -76,9 +77,9 @@ export default function QuantumPanel({ enabled, snr, demodulationType }) {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Conceptual Mapping</div>
           <div className="mt-3 space-y-2 text-sm text-slate-200">
-            <div>Amplitude ? probability amplitude</div>
-            <div>Noise ? measurement uncertainty</div>
-            <div>{demodulationType} lock-in ? basis alignment</div>
+            <div>Amplitude -&gt; probability amplitude</div>
+            <div>Noise -&gt; measurement uncertainty</div>
+            <div>{demodulationType} lock-in -&gt; basis alignment</div>
           </div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -120,10 +121,9 @@ export default function QuantumPanel({ enabled, snr, demodulationType }) {
             yaxis: { title: "Counts", gridcolor: "rgba(148,163,184,0.14)" },
           }}
           config={{ displayModeBar: false, responsive: true }}
-          style={{ width: "100%" }}
+          style={{ width: "100%", minWidth: 0 }}
         />
       )}
     </div>
   );
 }
-
